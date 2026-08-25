@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -29,8 +29,16 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          cp index.html site/404.html
           cp -r css js public site/
           touch site/.nojekyll
+
+      - name: Publish gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: site
+          branch: gh-pages
+          clean: true
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
