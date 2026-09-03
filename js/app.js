@@ -1,6 +1,9 @@
 (function () {
-  const { company, nav, stats, reasons, categories, products, getCategory, getProductsByCategory, getProduct, getFeatured, getRelated } = window.MH;
+  const { company, nav, stats, reasons, categories, products, getCategory, getKind, getProductsByCategory, getProduct, getFeatured, getRelated, getCatalog } = window.MH;
   const app = document.getElementById("app");
+  const PAGE_SIZE = 9;
+  let keepSearchFocus = false;
+  let searchTimer;
 
   function path() {
     const raw = (location.hash.replace(/^#/, "") || "/").split("?")[0];
@@ -8,11 +11,18 @@
   }
 
   function parse() {
-    const p = path().replace(/\/$/, "") || "/";
+    const hash = location.hash.replace(/^#/, "") || "/";
+    const qIndex = hash.indexOf("?");
+    const rawPath = (qIndex >= 0 ? hash.slice(0, qIndex) : hash) || "/";
+    const params = new URLSearchParams(qIndex >= 0 ? hash.slice(qIndex + 1) : "");
+    const p = rawPath.replace(/\/$/, "") || "/";
     const parts = p.split("/").filter(Boolean);
+    const kind = params.get("kind") || "";
+    const q = params.get("q") || "";
+    const page = Math.max(1, Number(params.get("page")) || 1);
     if (p === "/" || p === "") return { name: "home" };
-    if (parts[0] === "categories" && parts[1]) return { name: "category", slug: parts[1] };
-    if (parts[0] === "categories") return { name: "categories" };
+    if (parts[0] === "categories" && parts[1]) return { name: "category", slug: parts[1], kind, q, page };
+    if (parts[0] === "categories") return { name: "categories", slug: "", kind, q, page };
     if (parts[0] === "products" && parts[1]) return { name: "product", slug: parts[1] };
     if (parts[0] === "brochure" && parts[1]) return { name: "brochure", slug: parts[1] };
     if (parts[0] === "enquire") return { name: "enquire", slug: parts[1] || "" };
@@ -24,6 +34,20 @@
 
   function go(href) {
     location.hash = href.startsWith("#") ? href : "#" + href;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function catalogHref({ slug = "", kind = "", q = "", page = 1 } = {}) {
+    const pathPart = slug ? `/categories/${slug}` : "/categories";
+    const params = new URLSearchParams();
+    if (kind) params.set("kind", kind);
+    if (q) params.set("q", q);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return "#" + pathPart + (qs ? "?" + qs : "");
   }
 
   function logoMark() {
@@ -111,14 +135,19 @@
 
   function productCard(p) {
     const cat = getCategory(p.category);
-    return `<a class="product-card" href="#/products/${p.slug}">
-      <img src="${p.image}" alt="${p.name}" />
+    const kind = getKind(cat, p.kind);
+    return `<article class="product-card">
+      <a class="product-card-media" href="#/products/${p.slug}"><img src="${p.image}" alt="${p.name}" /></a>
       <div class="body">
-        <div class="tag">${cat ? cat.name : ""}</div>
-        <h3>${p.name}</h3>
+        <div class="tag">${kind ? kind.name : cat ? cat.name : ""}</div>
+        <h3><a href="#/products/${p.slug}">${p.name}</a></h3>
         <p class="muted">${p.intro.slice(0, 110)}…</p>
+        <div class="card-actions">
+          <a class="btn btn-ghost" href="#/products/${p.slug}">View</a>
+          <button class="btn btn-primary js-enquire" type="button" data-slug="${p.slug}">Send enquiry</button>
+        </div>
       </div>
-    </a>`;
+    </article>`;
   }
 
   function catCard(c, extra) {
@@ -148,17 +177,25 @@
       .join("");
   }
 
-  function enquiryForm(preset) {
+  function enquiryForm(preset, opts = {}) {
     const groups = categories
       .map((c) => {
-        const opts = products
+        const optsHtml = products
           .filter((p) => p.category === c.slug)
           .map((p) => `<option value="${p.slug}" ${p.slug === preset ? "selected" : ""}>${p.name}</option>`)
           .join("");
-        return `<optgroup label="${c.name}">${opts}</optgroup>`;
+        return `<optgroup label="${c.name}">${optsHtml}</optgroup>`;
       })
       .join("");
-    return `<form class="form" id="enquiry-form">
+    const a = 2 + Math.floor(Math.random() * 8);
+    const b = 2 + Math.floor(Math.random() * 8);
+    const captcha = opts.captcha
+      ? `<label>Quick check — what is ${a} + ${b}?
+          <input name="captcha" inputmode="numeric" autocomplete="off" required>
+        </label>
+        <input type="hidden" name="captchaExpect" value="${a + b}">`
+      : "";
+    return `<form class="form enquiry-form">
       <div class="form-row">
         <label>Your name <input name="name" required></label>
         <label>Hospital / clinic <input name="hospital" required></label>
@@ -174,9 +211,18 @@
           ${groups}
         </select>
       </label>
+      <label>I need
+        <select name="interest">
+          <option value="quote">Product quote</option>
+          <option value="installation">Installation / commissioning</option>
+          <option value="amc">AMC / CMC</option>
+          <option value="training">Clinical training</option>
+        </select>
+      </label>
       <label>Requirement
         <textarea name="message" placeholder="Quantity, OT type, timeline, AMC interest…"></textarea>
       </label>
+      ${captcha}
       <button class="btn btn-primary" type="submit">Send enquiry</button>
     </form>`;
   }
@@ -276,37 +322,82 @@
       </section>`;
   }
 
-  function categoriesPage() {
-    const cards = categories
+  function catalogSidebar(route) {
+    const q = route.q || "";
+    const groups = categories
       .map((c) => {
         const count = getProductsByCategory(c.slug).length;
-        return `<a class="cat-card" href="#/categories/${c.slug}">
-          <span class="emoji">${c.emoji}</span>
-          <h3>${c.name}</h3>
-          <p class="muted">${c.intro}</p>
-          <span class="more">${count} machines →</span>
-        </a>`;
+        const open = route.slug === c.slug;
+        const children = (c.children || [])
+          .map((ch) => {
+            const n = products.filter((p) => p.kind === ch.slug).length;
+            const active = open && route.kind === ch.slug;
+            return `<li><a class="${active ? "active" : ""}" href="${catalogHref({ slug: c.slug, kind: ch.slug, q })}">${ch.name} <span>${n}</span></a></li>`;
+          })
+          .join("");
+        return `<div class="cat-group ${open ? "open" : ""}">
+          <a class="cat-parent ${open && !route.kind ? "active" : ""}" href="${catalogHref({ slug: c.slug, q })}">${c.emoji} ${c.name} <span>${count}</span></a>
+          <ul>${children}</ul>
+        </div>`;
       })
       .join("");
-    return (
-      pageHero(
-        `<a href="#/">Home</a> / Products`,
-        "Product categories",
-        "Neuro, cardio, dental, ortho, general surgery and supporting medical equipment — each with dedicated machine pages."
-      ) + `<section><div class="wrap cat-grid">${cards}</div></section>`
-    );
+    return `<aside class="catalog-side">
+      <p class="kicker">Browse</p>
+      <h2>Categories</h2>
+      <a class="cat-all ${!route.slug ? "active" : ""}" href="${catalogHref({ q })}">All machines <span>${products.length}</span></a>
+      ${groups}
+    </aside>`;
   }
 
-  function categoryPage(slug) {
-    const category = getCategory(slug);
-    if (!category) return notFound();
-    const items = getProductsByCategory(slug).map(productCard).join("");
+  function pager(total, page, makeHref) {
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (pages <= 1) return "";
+    const items = [];
+    if (page > 1) items.push(`<a href="${makeHref(page - 1)}" rel="prev">Previous</a>`);
+    for (let i = 1; i <= pages; i++) {
+      items.push(`<a class="${i === page ? "active" : ""}" href="${makeHref(i)}">${i}</a>`);
+    }
+    if (page < pages) items.push(`<a href="${makeHref(page + 1)}" rel="next">Next</a>`);
+    return `<nav class="pager" aria-label="Catalogue pages">${items.join("")}</nav>`;
+  }
+
+  function catalogPage(route) {
+    const category = route.slug ? getCategory(route.slug) : null;
+    if (route.slug && !category) return notFound();
+    const kindMeta = category && route.kind ? getKind(category, route.kind) : null;
+    if (route.kind && category && !kindMeta) return notFound();
+    const q = route.q || "";
+    const list = getCatalog({ category: route.slug || "", kind: route.kind || "", q });
+    const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    const page = Math.min(route.page || 1, pages);
+    const slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const title = kindMeta ? kindMeta.name : category ? category.name : "Product catalogue";
+    const crumb = category
+      ? `<a href="#/">Home</a> / <a href="#/categories">Products</a> / ${category.name}${kindMeta ? " / " + kindMeta.name : ""}`
+      : `<a href="#/">Home</a> / Products`;
+    const lead = kindMeta
+      ? `${list.length} machine${list.length === 1 ? "" : "s"} in ${category.name}. Send an enquiry from any card, or open the datasheet.`
+      : category
+        ? category.intro
+        : "Filter by theatre, search a model, or send an enquiry without leaving the catalogue.";
+    const empty = `<div class="catalog-empty"><p class="muted">No machines match this filter. <a href="#/categories">Clear filters</a></p></div>`;
     return (
-      pageHero(
-        `<a href="#/">Home</a> / <a href="#/categories">Products</a> / ${category.name}`,
-        `${category.emoji} ${category.name}`,
-        category.intro
-      ) + `<section><div class="wrap product-grid">${items}</div></section>`
+      pageHero(crumb, title, lead) +
+      `<section class="catalog-section">
+        <div class="wrap catalog">
+          ${catalogSidebar(route)}
+          <div class="catalog-main">
+            <form class="catalog-toolbar" id="catalog-search">
+              <label class="sr-only" for="catalog-q">Search catalogue</label>
+              <input id="catalog-q" name="q" value="${escapeHtml(q)}" placeholder="Search machines, models, theatres…" />
+              <button class="btn btn-dark" type="submit">Search</button>
+            </form>
+            <p class="catalog-count">${list.length} result${list.length === 1 ? "" : "s"}${q ? ` for “${escapeHtml(q)}”` : ""}</p>
+            <div class="product-grid">${slice.length ? slice.map(productCard).join("") : empty}</div>
+            ${pager(list.length, page, (n) => catalogHref({ slug: route.slug, kind: route.kind, q, page: n }))}
+          </div>
+        </div>
+      </section>`
     );
   }
 
@@ -329,12 +420,12 @@
       <div class="wrap product-layout">
         <div class="product-image"><img src="${product.image}" alt="${product.name}" /></div>
         <div class="product-summary">
-          <p class="kicker">${category.name}</p>
+          <p class="kicker">${category.name}${getKind(category, product.kind) ? " · " + getKind(category, product.kind).name : ""}</p>
           <h1>${product.name}</h1>
           <p class="muted" style="font-size:1.05rem">${product.intro}</p>
           <p style="margin-top:12px;font-weight:600">Model ${product.model}</p>
           <div class="actions">
-            <a class="btn btn-primary" href="#/enquire/${product.slug}">Get Quote / Enquire Now</a>
+            <button class="btn btn-primary js-enquire" type="button" data-slug="${product.slug}">Send enquiry</button>
             <a class="btn btn-ghost" href="#/brochure/${product.slug}">Brochure / PDF</a>
             <a class="btn btn-dark" href="#/service">Warranty &amp; service</a>
           </div>
@@ -470,7 +561,7 @@
 
   const titles = {
     home: "MediHelp | Surgical & Medical Equipment",
-    categories: "Product categories | MediHelp",
+    categories: "Product catalogue | MediHelp",
     about: "Why MediHelp",
     contact: "Contact | MediHelp",
     enquire: "Get Quote | MediHelp",
@@ -481,8 +572,7 @@
     const route = parse();
     let main = "";
     if (route.name === "home") main = home();
-    else if (route.name === "categories") main = categoriesPage();
-    else if (route.name === "category") main = categoryPage(route.slug);
+    else if (route.name === "categories" || route.name === "category") main = catalogPage(route);
     else if (route.name === "product") main = productPage(route.slug);
     else if (route.name === "about") main = aboutPage();
     else if (route.name === "contact") main = contactPage();
@@ -497,12 +587,14 @@
         ? `${product.name} | MediHelp`
         : route.name === "category"
           ? `${getCategory(route.slug)?.name || "Category"} | MediHelp`
+          : route.name === "categories"
+            ? "Product catalogue | MediHelp"
           : route.name === "brochure" && product
             ? `${product.name} brochure | MediHelp`
             : titles[route.name] || "MediHelp";
 
-    app.innerHTML = `${header(route.name)}<main id="main">${main}</main>${footer()}`;
-    window.scrollTo(0, 0);
+    app.innerHTML = `${header(route.name)}<main id="main">${main}</main>${footer()}${chrome()}`;
+    window.scrollTo(0, keepSearchFocus ? window.scrollY : 0);
 
     const toggle = document.getElementById("menu-toggle");
     const navEl = document.getElementById("primary-nav");
@@ -510,11 +602,54 @@
       toggle.addEventListener("click", () => navEl.classList.toggle("open"));
     }
 
-    const form = document.getElementById("enquiry-form");
-    if (form) {
+    const printBtn = document.getElementById("print-btn");
+    if (printBtn) printBtn.addEventListener("click", () => window.print());
+
+    bindEnquiryForm();
+    bindCatalogSearch(route);
+    bindEnquireButtons();
+    bindModal();
+
+    if (keepSearchFocus) {
+      const qEl = document.getElementById("catalog-q");
+      if (qEl) {
+        qEl.focus();
+        const len = qEl.value.length;
+        qEl.setSelectionRange(len, len);
+      }
+      keepSearchFocus = false;
+    }
+  }
+
+  function chrome() {
+    return `
+      <div class="modal" id="enquire-modal" hidden>
+        <div class="modal-backdrop" data-close="1"></div>
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="enquire-title">
+          <button class="modal-close" type="button" data-close="1" aria-label="Close">×</button>
+          <p class="kicker">Sales desk</p>
+          <h2 id="enquire-title">Send enquiry</h2>
+          <p class="muted" id="enquire-lead">A specialist replies on working days with availability and a formal quote.</p>
+          <div id="enquire-form-slot"></div>
+        </div>
+      </div>
+      <div class="dock" aria-label="Quick contact">
+        <a class="dock-btn" href="${company.whatsapp}" target="_blank" rel="noopener" title="WhatsApp sales">WhatsApp</a>
+        <button class="dock-btn dock-btn-primary js-enquire" type="button" data-slug="" title="Send enquiry">Enquire</button>
+      </div>`;
+  }
+
+  function bindEnquiryForm(root = document) {
+    root.querySelectorAll(".enquiry-form").forEach((form) => {
+      if (form.dataset.bound) return;
+      form.dataset.bound = "1";
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(form).entries());
+        if (data.captchaExpect && String(data.captcha).trim() !== String(data.captchaExpect)) {
+          form.querySelector("[name=captcha]")?.classList.add("invalid");
+          return;
+        }
         const existing = JSON.parse(localStorage.getItem("medihelp-enquiries") || "[]");
         existing.push({ ...data, at: new Date().toISOString() });
         localStorage.setItem("medihelp-enquiries", JSON.stringify(existing));
@@ -523,13 +658,67 @@
           selected ? " about the " + selected.name : ""
         }. For urgent OT commissioning, call ${company.phone}.</div>`;
       });
-    }
+    });
+  }
 
-    const printBtn = document.getElementById("print-btn");
-    if (printBtn) printBtn.addEventListener("click", () => window.print());
+  function bindCatalogSearch(route) {
+    const form = document.getElementById("catalog-search");
+    const input = document.getElementById("catalog-q");
+    if (!form || !input) return;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      go(catalogHref({ slug: route.slug, kind: route.kind, q: input.value.trim(), page: 1 }));
+    });
+    input.addEventListener("input", () => {
+      keepSearchFocus = true;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        go(catalogHref({ slug: route.slug, kind: route.kind, q: input.value.trim(), page: 1 }));
+      }, 280);
+    });
+  }
+
+  function openEnquire(slug) {
+    const modal = document.getElementById("enquire-modal");
+    const slot = document.getElementById("enquire-form-slot");
+    const lead = document.getElementById("enquire-lead");
+    if (!modal || !slot) return;
+    const product = slug ? getProduct(slug) : null;
+    lead.textContent = product
+      ? `You are enquiring about ${product.name} (${product.model}).`
+      : "Tell us the hospital, city and machine. We reply with availability, lead time and a formal quote.";
+    slot.innerHTML = enquiryForm(product ? product.slug : "", { captcha: true });
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    bindEnquiryForm(slot);
+    slot.querySelector("[name=name]")?.focus();
+  }
+
+  function closeEnquire() {
+    const modal = document.getElementById("enquire-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+
+  function bindEnquireButtons() {
+    document.querySelectorAll(".js-enquire").forEach((btn) => {
+      btn.addEventListener("click", () => openEnquire(btn.getAttribute("data-slug") || ""));
+    });
+  }
+
+  function bindModal() {
+    const modal = document.getElementById("enquire-modal");
+    if (!modal) return;
+    modal.querySelectorAll("[data-close]").forEach((el) => {
+      el.addEventListener("click", closeEnquire);
+    });
   }
 
   window.addEventListener("hashchange", render);
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeEnquire();
+  });
   if (!location.hash) {
     history.replaceState(null, "", "#/");
   }
