@@ -57,6 +57,11 @@ const categories = [
     short: "Microscopes, cranial drills and endoscopic visualisation for cranial and spine theatres.",
     intro:
       "Neurosurgical platforms selected for optical clarity, low-vibration cutting and stable visualisation during long cranial and spine cases.",
+    children: [
+      { slug: "microscopes", name: "Surgical microscopes" },
+      { slug: "drills", name: "Cranial drills" },
+      { slug: "visualisation", name: "Endoscopic visualisation" },
+    ],
   },
   {
     slug: "cardio",
@@ -65,6 +70,11 @@ const categories = [
     short: "Perfusion, circulatory support and emergency cardiac response systems.",
     intro:
       "Cardiovascular equipment for cardiac OT, cath lab backup and ICU — from heart-lung support to defibrillation.",
+    children: [
+      { slug: "perfusion", name: "Heart-lung / perfusion" },
+      { slug: "circulatory-support", name: "Circulatory support" },
+      { slug: "defibrillators", name: "Defibrillators" },
+    ],
   },
   {
     slug: "dental",
@@ -73,6 +83,11 @@ const categories = [
     short: "Treatment units, intraoral scanning and implant motors for clinics and hospital dental OTs.",
     intro:
       "Dental systems for hospital departments and high-volume clinics, with infection-control and implant workflow in mind.",
+    children: [
+      { slug: "treatment-units", name: "Treatment units" },
+      { slug: "intraoral-imaging", name: "Intraoral imaging" },
+      { slug: "implant-motors", name: "Implant motors" },
+    ],
   },
   {
     slug: "ortho",
@@ -81,6 +96,11 @@ const categories = [
     short: "C-arms, power tools and arthroscopy towers for trauma and joint reconstruction.",
     intro:
       "Orthopaedic imaging and power systems built for trauma, arthroplasty and sports medicine theatres.",
+    children: [
+      { slug: "c-arms", name: "C-arms" },
+      { slug: "power-tools", name: "Power tools" },
+      { slug: "arthroscopy", name: "Arthroscopy towers" },
+    ],
   },
   {
     slug: "general-surgery",
@@ -89,6 +109,12 @@ const categories = [
     short: "OT lights, laparoscopy, electrosurgery and anaesthesia workstations.",
     intro:
       "Core operating-theatre infrastructure used across general, GI, gynae and day-care surgery.",
+    children: [
+      { slug: "ot-lights", name: "OT lights" },
+      { slug: "laparoscopy", name: "Laparoscopy" },
+      { slug: "electrosurgery", name: "Electrosurgery" },
+      { slug: "anaesthesia", name: "Anaesthesia workstations" },
+    ],
   },
   {
     slug: "other",
@@ -97,8 +123,37 @@ const categories = [
     short: "Monitors, sterilisation, infusion and ultrasound for wards, ICU and CSSD.",
     intro:
       "Supporting medical equipment that keeps theatres, ICU and CSSD running — monitoring, sterilisation, infusion and imaging.",
+    children: [
+      { slug: "monitors", name: "Patient monitors" },
+      { slug: "sterilisation", name: "Sterilisation" },
+      { slug: "infusion", name: "Infusion pumps" },
+      { slug: "ultrasound", name: "Ultrasound" },
+    ],
   },
 ];
+
+const productKinds = {
+  "helixview-ns-900": "microscopes",
+  "craniodrill-cd-450": "drills",
+  "neuroscope-ne-3d": "visualisation",
+  "cardioflow-hl-800": "perfusion",
+  "pulseguard-iabp-200": "circulatory-support",
+  "defibpro-dp-360": "defibrillators",
+  "dentachair-dc-elite": "treatment-units",
+  "scanintra-si-500": "intraoral-imaging",
+  "implantdrive-id-70": "implant-motors",
+  "orthoarm-oa-c9": "c-arms",
+  "powerortho-po-x4": "power-tools",
+  "arthrotower-at-4k": "arthroscopy",
+  "lumenot-lt-led": "ot-lights",
+  "laparovision-lv-4k": "laparoscopy",
+  "electrocut-ec-400": "electrosurgery",
+  "anesthiapro-aw-900": "anaesthesia",
+  "vitamon-vm-12": "monitors",
+  "sterimax-sm-23": "sterilisation",
+  "infusecare-ic-smart": "infusion",
+  "echoprobe-ep-hd": "ultrasound",
+};
 
 const img = {
   or: "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1400&q=80",
@@ -902,8 +957,16 @@ const products = [
   },
 ];
 
+products.forEach((p) => {
+  p.kind = productKinds[p.slug] || "";
+});
+
 function getCategory(slug) {
   return categories.find((c) => c.slug === slug);
+}
+
+function getKind(category, kindSlug) {
+  return (category?.children || []).find((c) => c.slug === kindSlug);
 }
 
 function getProductsByCategory(slug) {
@@ -924,8 +987,23 @@ function getRelated(product, limit = 3) {
     .slice(0, limit);
 }
 
+function getCatalog({ category, kind, q } = {}) {
+  let list = products.slice();
+  if (category) list = list.filter((p) => p.category === category);
+  if (kind) list = list.filter((p) => p.kind === kind);
+  if (q) {
+    const needle = q.trim().toLowerCase();
+    list = list.filter((p) => {
+      const cat = getCategory(p.category);
+      const kindName = getKind(cat, p.kind)?.name || "";
+      return [p.name, p.model, p.intro, cat?.name, kindName].join(" ").toLowerCase().includes(needle);
+    });
+  }
+  return list;
+}
+
 global.MH = {
   company, nav, stats, reasons, categories, products,
-  getCategory, getProductsByCategory, getProduct, getFeatured, getRelated
+  getCategory, getKind, getProductsByCategory, getProduct, getFeatured, getRelated, getCatalog
 };
 })(window);
