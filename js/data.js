@@ -1,32 +1,180 @@
 (function (global) {
 const company = {
-  name: "MediHelp",
-  legal: "MediHelp Surgical Pvt. Ltd.",
-  tagline: "Surgical & Medical Equipment",
-  statement: "Precision machines. Hospital-grade support.",
+  name: "Aarogya Surgical",
+  short: "ASIL",
+  legal: "Aarogya Surgical Industries Ltd.",
+  tagline: "A culture of clinical care",
+  statement: "Setting benchmarks in surgical systems for Indian theatres.",
+  city: "Mumbai 400051",
   phone: "+91 22 4567 8900",
   phoneHref: "tel:+912245678900",
+  phoneAlt: "+91 22 4567 8901",
   whatsapp: "https://wa.me/912245678900",
-  email: "sales@medihelp.in",
-  emailHref: "mailto:sales@medihelp.in",
+  email: "sales@aarogyasurgical.in",
+  emailHref: "mailto:sales@aarogyasurgical.in",
   hours: "Mon–Sat, 9:30 AM – 6:30 PM IST",
   address: "14th Floor, Horizon Towers, Bandra Kurla Complex, Mumbai 400051",
   serviceHub: "National Service Hub — Sector 44, Gurugram 122003",
   gst: "27AABCM0000A1Z5",
+  since: "1998",
 };
 
 const nav = [
-  { label: "Home", to: "/" },
-  { label: "Products", to: "/categories" },
-  { label: "Why MediHelp", to: "/about" },
-  { label: "Service", to: "/service" },
-  { label: "Contact", to: "/contact" },
+  {
+    label: "About Us",
+    to: "/about",
+    children: [
+      { label: "Company Profile", to: "/about" },
+      { label: "Investor Relation", to: "/investors" },
+      { label: "Corporate Social Responsibility", to: "/csr" },
+    ],
+  },
+  { label: "Products", to: "/categories", mega: "products" },
+  { label: "Our Services", to: "/service", mega: "services" },
+  {
+    label: "Contact Us",
+    to: "/contact",
+    children: [
+      { label: "Get in touch", to: "/contact" },
+      { label: "Partner with us", to: "/contact" },
+      { label: "Career", to: "/contact" },
+      { label: "Get a quote", to: "/enquire" },
+    ],
+  },
+  { label: "Blog Posts", to: "/blog" },
+];
+
+const setups = [
+  {
+    slug: "neuro-ot",
+    title: "Neurosurgery Theatre Setup",
+    label: "Neuro",
+    image: "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1200&q=80",
+    blurb: "Microscope, cranial drill and visualisation commissioned as one workcell.",
+    to: "/categories/neuro",
+  },
+  {
+    slug: "cardiac-ot",
+    title: "Cardiac OT & ICU Backup",
+    label: "Cardiac",
+    image: "https://images.unsplash.com/photo-1628348068343-c6a848d2b6dd?auto=format&fit=crop&w=1200&q=80",
+    blurb: "Perfusion, IABP and defibrillation specified for cardiac lists and crash cover.",
+    to: "/categories/cardio",
+  },
+  {
+    slug: "dental-clinic",
+    title: "Hospital Dental Clinic Setup",
+    label: "Dental",
+    image: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=1200&q=80",
+    blurb: "Chair, scanner and implant motor with an infection-control workflow.",
+    to: "/categories/dental",
+  },
+  {
+    slug: "ortho-ot",
+    title: "Orthopaedic / Trauma OT Setup",
+    label: "Ortho",
+    image: "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?auto=format&fit=crop&w=1200&q=80",
+    blurb: "C-arm, power tools and arthroscopy tower for joint and trauma lists.",
+    to: "/categories/ortho",
+  },
+  {
+    slug: "modular-ot",
+    title: "Modular Operation Theatre Setup",
+    label: "OT",
+    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
+    blurb: "Lights, laparoscopy, electrosurgery and anaesthesia for mixed speciality rooms.",
+    to: "/categories/general-surgery",
+  },
+  {
+    slug: "icu-cssd",
+    title: "ICU & CSSD Support Setup",
+    label: "ICU",
+    image: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1200&q=80",
+    blurb: "Monitors, infusion, sterilisation and bedside ultrasound around the theatre.",
+    to: "/categories/other",
+  },
+];
+
+const testimonials = [
+  {
+    name: "Dr. Meera Kulkarni",
+    role: "HOD Neurosurgery, Pune",
+    quote: "The NS-900 went in on a Friday list. Their engineer stayed for the first two cases and the accessory kit matched the RFQ, not a surprise invoice.",
+  },
+  {
+    name: "Rajiv Menon",
+    role: "Biomedical, multi-speciality hospital, Kochi",
+    quote: "Serial-number tickets actually get a named person. We do not chase a generic service inbox when a C-arm is down.",
+  },
+  {
+    name: "Dr. Ananya Shah",
+    role: "Cardiac OT in-charge, Ahmedabad",
+    quote: "Quote, install and AMC sat on one sheet. That is how procurement wanted it — not three vendors for one table.",
+  },
+];
+
+const partners = ["Apex Optics", "Nordic Perfusion", "Helix Dental", "Orion Imaging", "Lumen Surgical", "Vita Critical"];
+
+const community = [
+  {
+    title: "Theatre kits for district hospitals",
+    image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80",
+    copy: "Sterile drape and basic OT accessory kits supplied to three district hospitals during monsoon flood relief, 2024.",
+  },
+  {
+    title: "Biomedical training days",
+    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80",
+    copy: "Quarterly workshops in Pune and Kochi for hospital biomedical teams on C-arm safety and steriliser validation.",
+  },
+];
+
+const posts = [
+  {
+    slug: "commissioning-a-neuro-theatre",
+    title: "What a neurosurgery theatre RFQ should actually list",
+    date: "12 Aug 2026",
+    image: "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=1400&q=80",
+    excerpt: "A microscope without drapes, a drill without burs, and a warranty without a named engineer is not a workcell. Here is the checklist our OT teams use.",
+    body: [
+      "Hospitals lose weeks when a cranial microscope arrives without the drape pack, recording arm or ceiling-mount survey. Write the RFQ as a workcell: optics, recording, drapes, first-case engineer and year-one preventive visit.",
+      "Ask for serial-number service, not a generic inbox. Ceiling mounts need a site drawing before the crate ships. If the vendor cannot name the engineer who will stand in for the first two cases, keep looking.",
+    ],
+  },
+  {
+    slug: "c-arm-site-survey",
+    title: "Why C-arm and OT light orders start with a site survey",
+    date: "28 Jul 2026",
+    image: "https://images.unsplash.com/photo-1519494080410-f9aa76cb4283?auto=format&fit=crop&w=1400&q=80",
+    excerpt: "Ceiling loads, power isolation and radiation paperwork are not paperwork theatre. They are why we refuse to energise an X-ray system on guesswork.",
+    body: [
+      "A C-arm that cannot park, or a light that sags on a weak slab, is an install failure — not a product failure. Our survey covers slab capacity, isolation, pendants and the biomedical file your AERB paperwork will ask for.",
+      "Lead time is honest only after that visit. We would rather delay a crate than hang hardware on an unsurveyed ceiling.",
+    ],
+  },
+  {
+    slug: "amc-vs-cmc-for-ot",
+    title: "AMC versus CMC for mixed speciality theatres",
+    date: "9 Jul 2026",
+    image: "https://images.unsplash.com/photo-1581595220892-b0739db3b8c5?auto=format&fit=crop&w=1400&q=80",
+    excerpt: "Labour-only cover is cheap until a turbine or X-ray tube is down. Match the contract to how hard the room actually runs.",
+    body: [
+      "AMC covers labour and listed visits. CMC adds agreed parts. Cardiac and trauma rooms that run six days a week usually need CMC on the consoles that stop the list — not on every suction canister.",
+      "Ask for 48-hour triage from a named hub, loaner language, and tickets logged against serial numbers. That is the difference between a contract and a brochure.",
+    ],
+  },
+];
+
+const certifications = [
+  "ISO 13485-aligned QMS",
+  "GST-compliant invoicing",
+  "Site survey before ceiling mounts",
+  "National service hub, Gurugram",
 ];
 
 const stats = [
-  { value: "18+", label: "Years supplying OT & ICU" },
+  { value: "25+", label: "Years in surgical supply" },
   { value: "420+", label: "Hospitals & clinics served" },
-  { value: "6", label: "Surgical specialities" },
+  { value: "6", label: "Clinical specialities" },
   { value: "48 hr", label: "Critical-part response" },
 ];
 
@@ -1002,8 +1150,12 @@ function getCatalog({ category, kind, q } = {}) {
   return list;
 }
 
+function getPost(slug) {
+  return posts.find((p) => p.slug === slug);
+}
+
 global.MH = {
-  company, nav, stats, reasons, categories, products,
-  getCategory, getKind, getProductsByCategory, getProduct, getFeatured, getRelated, getCatalog
+  company, nav, stats, reasons, categories, products, setups, testimonials, partners, certifications, community, posts,
+  getCategory, getKind, getProductsByCategory, getProduct, getFeatured, getRelated, getCatalog, getPost
 };
 })(window);
